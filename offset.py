@@ -12,7 +12,7 @@ class OffsetHandler(tornado.web.RequestHandler):
 
     def get(self, lat, lon):
         try:
-            entry = self.db.get("select * from cn_map_offset where lat=%s and lon=%s", int(lat*100), int(lon*100))
+            entry = self.db.get("SELECT * FROM cn_map_offset WHERE lat=%s AND lon=%s", int(float(lat)*100), int(float(lon)*100))
         except Exception:
             raise HTTPError(500)
 
