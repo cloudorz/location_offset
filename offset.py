@@ -13,7 +13,7 @@ class OffsetHandler(tornado.web.RequestHandler):
     def get(self, lat, lon):
 
         lat, lon = float(lat), float(lon)
-        entries = self.db.get("SELECT * FROM cn_map_offset WHERE lat=%s AND lon=%s", int(lat*100), int(lon*100))
+        entries = self.db.query("SELECT * FROM cn_map_offset WHERE lat=%s AND lon=%s", int(lat*100), int(lon*100))
 
         fake_lat, fake_lon = lat, lon
         if entries:
