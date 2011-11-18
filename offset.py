@@ -20,6 +20,9 @@ class OffsetHandler(tornado.web.RequestHandler):
             op = OffsetPos(lat, lon, entries[0])
             fake_lat, fake_lon = op.getFakePos()
 
+        fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
+        fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
+
         self.render_json({'lat': fake_lat, 'lon': fake_lon})
 
     @property
@@ -49,10 +52,8 @@ class OffsetPos(object):
 
         lat_pixel += self.off_y
         lon_pixel += self.off_x
-        fake_lat = float(decimal.Decimal(self.pixel2lat(lat_pixel)).quantize(decimal.Decimal('0.000001')))
-        fake_lon = float(decimal.Decimal(self.pixel2lon(lon_pixel)).quantize(decimal.Decimal('0.000001')))
 
-        return fake_lat, fake_lon 
+        return self.pixel2lat(lat_pixel), self.pixel2lon(lon_pixel) 
 
     def lat2pixel(self):
         siny = math.sin(self.lat*math.pi / 180)
