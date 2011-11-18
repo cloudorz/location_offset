@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import httplib, math
+import httplib, math, decimal
 
 import tornado.web
 import tornado.database
@@ -49,8 +49,10 @@ class OffsetPos(object):
 
         lat_pixel += self.off_y
         lon_pixel += self.off_x
+        fake_lat = decimal.Decimal(self.pixel2lat(lat_pixel)).quantize(decimal.Decimal('0.000001'))
+        fake_lon = decimal.Decimal(self.pixel2lon(lon_pixel)).quantize(decimal.Decimal('0.000001'))
 
-        return self.pixel2lat(lat_pixel), self.pixel2lon(lon_pixel)
+        return fake_lat, fake_lon 
 
     def lat2pixel(self):
         siny = math.sin(self.lat*math.pi / 180)
