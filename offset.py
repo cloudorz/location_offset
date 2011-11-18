@@ -49,8 +49,8 @@ class OffsetPos(object):
 
         lat_pixel += self.off_y
         lon_pixel += self.off_x
-        fake_lat = decimal.Decimal(self.pixel2lat(lat_pixel)).quantize(decimal.Decimal('0.000001'))
-        fake_lon = decimal.Decimal(self.pixel2lon(lon_pixel)).quantize(decimal.Decimal('0.000001'))
+        fake_lat = float(decimal.Decimal(self.pixel2lat(lat_pixel)).quantize(decimal.Decimal('0.000001')))
+        fake_lon = float(decimal.Decimal(self.pixel2lon(lon_pixel)).quantize(decimal.Decimal('0.000001')))
 
         return fake_lat, fake_lon 
 
