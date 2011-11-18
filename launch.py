@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import tornado.ioLoop
+import tornado.ioloop
 import tornado.web
 import tornado.options
 
