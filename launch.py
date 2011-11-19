@@ -13,7 +13,8 @@ define('port', default=8888, help="run on the given port", type=int)
 
 app = tornado.web.Application([
     (r"^/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
-    ])
+    ], 
+    debug=False)
 
 def main():
     tornado.options.parse_command_line()
