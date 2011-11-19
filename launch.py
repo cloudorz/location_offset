@@ -12,7 +12,7 @@ from offset import OffsetHandler
 define('port', default=8888, help="run on the given port", type=int)
 
 app = tornado.web.Application([
-    (r"^/(\d+\.\d+):(\d+\.\d+)$", OffsetHandler),
+    (r"^/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
     ])
 
 def main():
