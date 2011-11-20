@@ -14,7 +14,11 @@ class OffsetHandler(tornado.web.RequestHandler):
 
         lat, lon = float(lat), float(lon)
         t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
-        entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", int(lat*100+0.5), int(lon*100+0.5))
+
+        try:
+            entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", int(lat*100+0.5), int(lon*100+0.5))
+        except Exception:
+            pass
 
         fake_lat, fake_lon = lat, lon
         if entries:
@@ -28,9 +32,7 @@ class OffsetHandler(tornado.web.RequestHandler):
 
     @property
     def db(self):
-        return tornado.database.Connection(
-            host="127.0.0.1:3306", database="gis",
-            user="root", password="123")
+        return self.application.db_connect
 
     def get_error_html(self, status_code, **kwargs):
         ''' all error response where json data {'code': ..., 'msg': ...}

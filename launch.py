@@ -16,6 +16,10 @@ app = tornado.web.Application([
     ], 
     debug=False)
 
+app.db_connect = tornado.database.Connection(
+            host="127.0.0.1:3306", database="gis",
+            user="root", password="123")
+
 def main():
     tornado.options.parse_command_line()
 
