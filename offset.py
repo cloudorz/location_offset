@@ -3,32 +3,28 @@
 import httplib, math, decimal
 
 import tornado.web
+import tornado.httpclient
 import tornado.database
-from tornado.escape import json_encode
+from tornado.escape import json_encode, json_decode
 from tornado.web import HTTPError
 
+CREATE_SYNTAX = '''
+CREATE TABLE IF NOT EXISTS %s (
+	id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    address CHAR(200) NOT NULL,
+	ne_lat DOUBLE NOT NULL,
+	ne_lon DOUBLE NOT NULL,
+	sw_lat DOUBLE NOT NULL,
+	sw_lon DOUBLE NOT NULL,
+	PRIMARY KEY (id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
+'''
 
-class OffsetHandler(tornado.web.RequestHandler):
+INSERT_SYNTAX = '''
+INSERT INTO %s SET ne_lat=%s, ne_lon=%s, sw_lat=%s, sw_lon=%s, address='%s'
+'''
 
-    def get(self, lat, lon):
-
-        lat, lon = float(lat), float(lon)
-        t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
-
-        try:
-            entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", int(lat*100+0.5), int(lon*100+0.5))
-        except Exception:
-            pass
-
-        fake_lat, fake_lon = lat, lon
-        if entries:
-            op = OffsetPos(lat, lon, entries[0])
-            fake_lat, fake_lon = op.getFakePos()
-
-        fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
-        fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
-
-        self.render_json({'lat': fake_lat, 'lon': fake_lon})
+class BasicRequestHandler(tornado.web.RequestHandler):
 
     @property
     def db(self):
@@ -42,6 +38,100 @@ class OffsetHandler(tornado.web.RequestHandler):
     def render_json(self, data, **kwargs):
         self.set_header('Content-Type', 'Application/json; charset=UTF-8')
         self.write(json_encode(data))
+
+
+class OffsetHandler(BasicRequestHandler):
+
+    def get(self, lat, lon):
+
+        lat, lon = float(lat), float(lon)
+        t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
+
+        try:
+            entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", int(lat*100+0.5), int(lon*100+0.5))
+        except Exception:
+            entries = []
+
+        fake_lat, fake_lon = lat, lon
+        if entries:
+            op = OffsetPos(lat, lon, entries[0])
+            fake_lat, fake_lon = op.getFakePos()
+
+        fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
+        fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
+
+        self.render_json({'lat': fake_lat, 'lon': fake_lon})
+
+
+class AddressHandler(BasicRequestHandler):
+
+    def get(self, lat, lon):
+
+        lat, lon = float(lat), float(lon)
+        t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
+
+        try:
+            entries = self.db.query("SELECT address FROM " + t_name + "WHERE %(lat)f > sw_lat AND \
+                    %(lat)f < ne_lat AND %(lon)f > sw_lon AND %(lon)f < ne_lat"
+                    % {'lat': lat, 'lon': lon })
+        except Exception:
+            entries = []
+
+        if entries:
+            addr = entries[0].address
+        else:
+            addr = self.add_new_address(t_name, lat, lon)
+
+        self.render_json(addr)
+
+    def add_new_address(self, t_name, lat, lon):
+
+        http = tornado.httpclient.HTTPClient()
+        try:
+            res = http.fetch("http://maps.google.com/maps/api/geocode/json?\
+                latlng=%f,%f&sensor=true" % (lat, lon))
+        except tornado.httpclient.HTTPError:
+            res = None
+
+        if res and res['status'] == 'OK':
+            addr_info = json_decode(res)
+            ne, sw, addr = self.extract_addr_info(addr_info)
+
+            self.save_info2db(t_name, [ne['lat'], ne['lng'], sw['lat'], sw['lng'], addr])
+        else:
+            addr = None
+
+        return addr
+
+    def extract_addr_info(self, info):
+
+        street_addr_dict = None
+        for e in info['results']:
+            if 'street_address' in e['types']:
+                street_addr_dict = e
+                break
+
+        if not street_addr_list:
+            return None
+
+        street_addr_list = []
+        political_addr_list = []
+        for e in street_addr_dict['address_components']:
+            if 'political' in e['types']:
+                political_addr_list.insert(0, e['long_name'])
+            else:
+                street_addr_dict.insert(0, e['long_name'])
+        street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_dict))
+
+        bound = street_add_dict['geometry']['bounds']
+
+        return bound['northeast'], bound['southwest'], street_addr
+
+    def save_info2db(self, t_name, info):
+        info.insert(0, t_name)
+        self.db.execute(CREATE_SYNTAX % t_name)
+        self.db.execute(INSERT_SYNTAX % tuple(info))
+
 
 class OffsetPos(object):
 
