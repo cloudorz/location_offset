@@ -89,8 +89,7 @@ class AddressHandler(BasicRequestHandler):
         http = tornado.httpclient.HTTPClient()
         try:
             print >> sys.stderr, 'fuck'
-            res = http.fetch("http://maps.google.com/maps/api/geocode/json?\
-                latlng=%f,%f&sensor=true" % (lat, lon))
+            res = http.fetch("http://maps.google.com/maps/api/geocode/json?latlng=%f,%f&sensor=true" % (lat, lon))
             print >> sys.stderr, 'fuck2'
         except tornado.httpclient.HTTPError:
             res = None
