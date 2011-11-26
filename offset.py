@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import httplib, math, decimal
+import httplib, math, decimal, sys
 
 import tornado.web
 import tornado.httpclient
@@ -88,18 +88,21 @@ class AddressHandler(BasicRequestHandler):
 
         http = tornado.httpclient.HTTPClient()
         try:
+            print >> sys.stderr, 'fuck'
             res = http.fetch("http://maps.google.com/maps/api/geocode/json?\
                 latlng=%f,%f&sensor=true" % (lat, lon))
+            print >> sys.stderr, 'fuck2'
         except tornado.httpclient.HTTPError:
             res = None
 
-        if res and res['status'] == 'OK':
-            addr_info = json_decode(res)
-            ne, sw, addr = self.extract_addr_info(addr_info)
+        addr = None
+        if res and res.body:
+            addr_info = json_decode(res.body)
+            if add_info['status'] == 'OK':
+                print >> sys.stderr, 'fuck3'
+                ne, sw, addr = self.extract_addr_info(addr_info)
 
-            self.save_info2db(t_name, [ne['lat'], ne['lng'], sw['lat'], sw['lng'], addr])
-        else:
-            addr = None
+                self.save_info2db(t_name, [ne['lat'], ne['lng'], sw['lat'], sw['lng'], addr])
 
         return addr
 
