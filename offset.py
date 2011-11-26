@@ -121,7 +121,6 @@ class AddressHandler(BasicRequestHandler):
             else:
                 street_addr_list.insert(0, e['long_name'])
         street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_list))
-        print >> sys.stderr, street_addr
         print >> sys.stderr, street_addr_dict['geometry']
 
         bound = street_addr_dict['geometry']['bounds']
