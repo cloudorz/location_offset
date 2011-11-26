@@ -6,15 +6,16 @@ import tornado.options
 import tornado.httpserver
 
 from tornado.options import define, options
-from offset import OffsetHandler
+from offset import OffsetHandler, AddressHandler
 
 # server
 define('port', default=8888, help="run on the given port", type=int)
 
 app = tornado.web.Application([
-    (r"^/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
+    (r"^/e2m/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
+    (r"^/e2addr/(\d+\.\d+),(\d+\.\d+)$", AddressHandler),
     ], 
-    debug=False)
+    debug=True)
 
 app.db_connect = tornado.database.Connection(
             host="127.0.0.1:3306", database="gis",
