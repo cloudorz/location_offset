@@ -96,10 +96,9 @@ class AddressHandler(BasicRequestHandler):
         if res and res.body:
             addr_info = json_decode(res.body)
             if addr_info['status'] == 'OK':
-                print >> sys.stderr, 'fuck3'
                 ne, sw, addr = self.extract_addr_info(addr_info)
-                print >> sys.stderr, addr
-                self.save_info2db(t_name, [ne['lat'], ne['lng'], sw['lat'], sw['lng'], addr])
+                if ne and sw and addr:
+                    self.save_info2db(t_name, [ne['lat'], ne['lng'], sw['lat'], sw['lng'], addr])
 
         return addr
 
@@ -111,8 +110,8 @@ class AddressHandler(BasicRequestHandler):
                 street_addr_dict = e
                 break
 
-        if not street_addr_list:
-            return None
+        if not street_addr_dict:
+            return None, None, None
 
         street_addr_list = []
         political_addr_list = []
