@@ -119,8 +119,8 @@ class AddressHandler(BasicRequestHandler):
             if 'political' in e['types']:
                 political_addr_list.insert(0, e['long_name'])
             else:
-                street_addr_dict.insert(0, e['long_name'])
-        street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_dict))
+                street_addr_list.insert(0, e['long_name'])
+        street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_list))
 
         bound = street_add_dict['geometry']['bounds']
 
