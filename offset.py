@@ -122,7 +122,7 @@ class AddressHandler(BasicRequestHandler):
                 street_addr_list.insert(0, e['long_name'])
         street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_list))
 
-        bound = street_add_dict['geometry']['bounds']
+        bound = street_addr_dict['geometry']['bounds']
 
         return bound['northeast'], bound['southwest'], street_addr
 
