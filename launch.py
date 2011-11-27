@@ -17,7 +17,7 @@ app = tornado.web.Application([
     (r"^/e2m/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
     (r"^/m2addr/(\d+\.\d+),(\d+\.\d+)$", AddressHandler),
     ], 
-    debug=True)
+    debug=False)
 
 app.db_connect = tornado.database.Connection(
             host="127.0.0.1:3306", database="gis",
