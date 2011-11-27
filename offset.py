@@ -37,23 +37,30 @@ class OffsetHandler(BasicRequestHandler):
         lat_100, lon_100 =  int(lat*100+0.5), int(lon*100+0.5)
         key = "e2m:%s" % hashlib.md5("%s%s" % (lat_100, lon_100)).hexdigest()
 
-        res = self.rdb.get(key)
-        if not res:
+        off_json = self.rdb.get(key)
+        if not off_json:
             t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
             try:
-                entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", lat_100, lon_100)
+                entries = self.db.query("SELECT off_x, off_y FROM " + t_name + " WHERE lat=%s AND lon=%s", lat_100, lon_100)
             except Exception:
-                entries = []
+                entries = None
 
-            fake_lat, fake_lon = lat, lon
             if entries:
-                op = OffsetPos(lat, lon, entries[0])
-                fake_lat, fake_lon = op.getFakePos()
+                off_dict = entries[0]
+                self.rdb.set(key, json_encode(off_dict))
+            else:
+                off_dict = None
+        else:
+            off_dict = json_decode(off_json)
 
-            fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
-            fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
-            res = json_encode({'lat': fake_lat, 'lon': fake_lon})
-            self.rdb.set(key, res)
+        fake_lat, fake_lon = lat, lon
+        if off_dict:
+            op = OffsetPos(lat, lon, off_dict)
+            fake_lat, fake_lon = op.getFakePos()
+
+        fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
+        fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
+        res = json_encode({'lat': fake_lat, 'lon': fake_lon})
 
         self.render_json(res)
 
@@ -136,7 +143,7 @@ class OffsetPos(object):
 
     def __init__(self, lat, lon, entry, zoom=18):
         self.lat, self.lon = lat, lon 
-        self.off_x, self.off_y = entry.off_x, entry.off_y
+        self.off_x, self.off_y = entry['off_x'], entry['off_y']
         self.zoom = zoom
 
     def getFakePos(self):
