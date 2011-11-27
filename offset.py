@@ -77,7 +77,9 @@ class AddressHandler(BasicRequestHandler):
         if not res:
             addr = self.retrive_addr(lat, lon)
             res = json_encode(addr)
-            self.rdb.set(key, res)
+            # get the addr save it to redis db
+            if addr:
+                self.rdb.set(key, res)
 
         self.render_json(res)
 
