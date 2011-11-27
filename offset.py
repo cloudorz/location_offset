@@ -74,7 +74,7 @@ class AddressHandler(BasicRequestHandler):
 
         res = self.rdb.get(key)
 
-        if not key:
+        if not res:
             addr = self.retrive_addr(lat, lon)
             res = json_encode(addr)
             self.rdb.set(key, res)
