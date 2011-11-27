@@ -46,7 +46,7 @@ class OffsetHandler(BasicRequestHandler):
                 entries = None
 
             if entries:
-                off_dict = dict(entries[0])
+                off_dict = entries[0]
                 self.rdb.set(key, json_encode(off_dict))
             else:
                 off_dict = None
