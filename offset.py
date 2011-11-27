@@ -86,7 +86,7 @@ class AddressHandler(BasicRequestHandler):
     def pixel2key(self, lat, lon):
 
         lat_10000, lon_10000 = self.int05(lat), self.int05(lon)
-        return "e2addr:%s" % hashlib.md5("%s%s" % (lat_10000, lon_10000)).hexdigest()
+        return "m2addr:%s" % hashlib.md5("%s%s" % (lat_10000, lon_10000)).hexdigest()
 
     def int05(self, f):
 
