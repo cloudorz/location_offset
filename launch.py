@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import redis
+
 import tornado.ioloop
 import tornado.web
 import tornado.options
@@ -20,6 +22,8 @@ app = tornado.web.Application([
 app.db_connect = tornado.database.Connection(
             host="127.0.0.1:3306", database="gis",
             user="root", password="123")
+
+app.redis = redis.Redis(host='localhost', port=6379, db=1)
 
 def main():
     tornado.options.parse_command_line()

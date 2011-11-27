@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import httplib, math, decimal, sys
+import httplib, math, decimal, hashlib, sys
 
 import tornado.web
 import tornado.httpclient
@@ -8,27 +8,16 @@ import tornado.database
 from tornado.escape import json_encode, json_decode
 from tornado.web import HTTPError
 
-CREATE_SYNTAX = '''
-CREATE TABLE IF NOT EXISTS %s (
-	id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-    address CHAR(200) NOT NULL,
-	ne_lat DOUBLE NOT NULL,
-	ne_lon DOUBLE NOT NULL,
-	sw_lat DOUBLE NOT NULL,
-	sw_lon DOUBLE NOT NULL,
-	PRIMARY KEY (id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8
-'''
-
-INSERT_SYNTAX = '''
-INSERT INTO %s SET ne_lat=%s, ne_lon=%s, sw_lat=%s, sw_lon=%s, address='%s'
-'''
 
 class BasicRequestHandler(tornado.web.RequestHandler):
 
     @property
     def db(self):
         return self.application.db_connect
+
+    @property
+    def rdb(self):
+        return self.application.redis
 
     def get_error_html(self, status_code, **kwargs):
         ''' all error response where json data {'code': ..., 'msg': ...}
@@ -37,7 +26,7 @@ class BasicRequestHandler(tornado.web.RequestHandler):
 
     def render_json(self, data, **kwargs):
         self.set_header('Content-Type', 'Application/json; charset=UTF-8')
-        self.write(json_encode(data))
+        self.write(data)
 
 
 class OffsetHandler(BasicRequestHandler):
@@ -45,22 +34,28 @@ class OffsetHandler(BasicRequestHandler):
     def get(self, lat, lon):
 
         lat, lon = float(lat), float(lon)
-        t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
+        lat_100, lon_100 =  int(lat*100+0.5), int(lon*100+0.5)
+        key = "e2m:%s" % hashlib.md5("%s%s" % (lat_100, lon_100)).hexdigest()
 
-        try:
-            entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", int(lat*100+0.5), int(lon*100+0.5))
-        except Exception:
-            entries = []
+        res = self.rdb.get(key)
+        if not res:
+            t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
+            try:
+                entries = self.db.query("SELECT * FROM " + t_name + " WHERE lat=%s AND lon=%s", lat_100, lon_100)
+            except Exception:
+                entries = []
 
-        fake_lat, fake_lon = lat, lon
-        if entries:
-            op = OffsetPos(lat, lon, entries[0])
-            fake_lat, fake_lon = op.getFakePos()
+            fake_lat, fake_lon = lat, lon
+            if entries:
+                op = OffsetPos(lat, lon, entries[0])
+                fake_lat, fake_lon = op.getFakePos()
 
-        fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
-        fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
+            fake_lat = float(decimal.Decimal(fake_lat).quantize(decimal.Decimal('0.000001')))
+            fake_lon = float(decimal.Decimal(fake_lon).quantize(decimal.Decimal('0.000001')))
+            res = json_encode({'lat': fake_lat, 'lon': fake_lon})
+            self.rdb.set(key, res)
 
-        self.render_json({'lat': fake_lat, 'lon': fake_lon})
+        self.render_json(res)
 
 
 class AddressHandler(BasicRequestHandler):
@@ -68,23 +63,37 @@ class AddressHandler(BasicRequestHandler):
     def get(self, lat, lon):
 
         lat, lon = float(lat), float(lon)
-        t_name = "offset_%s_%s" % (int(lat/3 + 0.5), int(lon/3 + 0.5))
+        key = self.pixel2key(lat, lon)
 
-        try:
-            entries = self.db.query("SELECT address FROM " + t_name + "WHERE %(lat)f > sw_lat AND \
-                    %(lat)f < ne_lat AND %(lon)f > sw_lon AND %(lon)f < ne_lat"
-                    % {'lat': lat, 'lon': lon })
-        except Exception:
-            entries = []
+        res = self.rdb.get(key)
 
-        if entries:
-            addr = entries[0].address
+        if not key:
+            addr = self.retrive_addr(lat, lon)
+            res = json_encode(addr)
+            self.rdb.set(key, res)
+
+        self.render_json(res)
+
+    def pixel2key(self, lat, lon):
+
+        lat_10000, lon_10000 = self.int05(lat), self.int05(lon)
+        return "e2addr:%s" % hashlib.md5("%s%s" % (lat_10000, lon_10000)).hexdigest()
+
+    def int05(self, f):
+
+        partial = f*10000 - int(f*1000)*10
+        if partial < 2.5:
+            plus = 0
+        elif partial >= 2.5 and partial < 7.5:
+            plus = 5
+        elif partial >= 7.5 and partial < 10:
+            plus = 10
         else:
-            addr = self.add_new_address(t_name, lat, lon)
+            plus = 0
 
-        self.render_json(addr)
+        return int(f*1000)*10 + plus
 
-    def add_new_address(self, t_name, lat, lon):
+    def retrive_addr(self, lat, lon):
 
         http = tornado.httpclient.HTTPClient()
         try:
@@ -96,9 +105,7 @@ class AddressHandler(BasicRequestHandler):
         if res and res.body:
             addr_info = json_decode(res.body)
             if addr_info['status'] == 'OK':
-                ne, sw, addr = self.extract_addr_info(addr_info)
-                if ne and sw and addr:
-                    self.save_info2db(t_name, [ne['lat'], ne['lng'], sw['lat'], sw['lng'], addr])
+                addr = self.extract_addr_info(addr_info)
 
         return addr
 
@@ -111,7 +118,7 @@ class AddressHandler(BasicRequestHandler):
                 break
 
         if not street_addr_dict:
-            return None, None, None
+            return None
 
         street_addr_list = []
         political_addr_list = []
@@ -121,16 +128,8 @@ class AddressHandler(BasicRequestHandler):
             else:
                 street_addr_list.insert(0, e['long_name'])
         street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_list))
-        print >> sys.stderr, street_addr_dict['geometry']
 
-        bound = street_addr_dict['geometry']['bounds']
-
-        return bound['northeast'], bound['southwest'], street_addr
-
-    def save_info2db(self, t_name, info):
-        info.insert(0, t_name)
-        self.db.execute(CREATE_SYNTAX % t_name)
-        self.db.execute(INSERT_SYNTAX % tuple(info))
+        return street_addr
 
 
 class OffsetPos(object):
