@@ -138,7 +138,7 @@ class AddressHandler(BasicRequestHandler):
                 political_addr_list.insert(0, e['long_name'])
             else:
                 street_addr_list.insert(0, e['long_name'])
-        street_addr = "%s#%s" % (','.join(political_addr_list), ','.join(street_addr_list))
+        street_addr = "%s#%s" % (','.join(political_addr_list), ''.join(street_addr_list))
 
         return street_addr
 
