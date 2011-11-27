@@ -15,7 +15,7 @@ define('port', default=8888, help="run on the given port", type=int)
 
 app = tornado.web.Application([
     (r"^/e2m/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
-    (r"^/e2addr/(\d+\.\d+),(\d+\.\d+)$", AddressHandler),
+    (r"^/m2addr/(\d+\.\d+),(\d+\.\d+)$", AddressHandler),
     ], 
     debug=True)
 
