@@ -76,7 +76,7 @@ class AddressHandler(BasicRequestHandler):
 
         if not res:
             addr = self.retrive_addr(lat, lon)
-            res = addr
+            res = addr or ""
             # get the addr save it to redis db
             if addr:
                 self.rdb.set(key, res)
@@ -122,14 +122,7 @@ class AddressHandler(BasicRequestHandler):
 
     def extract_addr_info(self, info):
 
-        street_addr_dict = None
-        for e in info['results']:
-            if 'street_address' in e['types']:
-                street_addr_dict = e
-                break
-
-        if not street_addr_dict:
-            return None
+        street_addr_dict = info['results'][0]
 
         street_addr_list = []
         political_addr_list = []
