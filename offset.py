@@ -20,9 +20,10 @@ class BasicRequestHandler(tornado.web.RequestHandler):
         return self.application.redis
 
     def get_error_html(self, status_code, **kwargs):
+        
         ''' all error response where json data {'code': ..., 'msg': ...}
         '''
-        return self.render_json({'code': status_code, 'msg': httplib.responses[status_code]})
+        return json_encode({'code': status_code, 'msg': httplib.responses[status_code]})
 
     def render_json(self, data, **kwargs):
         self.set_header('Content-Type', 'Application/json; charset=UTF-8')
