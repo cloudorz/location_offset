@@ -158,7 +158,7 @@ class Pos2CityHandler(BasicRequestHandler):
             if data and data.body:
                 addr_info = json_decode(data.body)
                 if addr_info['status'] == 'OK':
-                    addr = self.extract_addr_info(addr_info)
+                    addr = self.get_city_info(addr_info)
 
             res = addr
 
