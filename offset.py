@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import httplib, math, decimal, hashlib, sys
+import httplib, math, decimal, hashlib, sys, logging
 
 import tornado.web
 import tornado.httpclient
@@ -165,7 +165,8 @@ class Pos2CityHandler(BasicRequestHandler):
             if res:
                 self.rdb.set(key, res)
 
-        return res
+        self.write(res)
+	self.finish()
 
     def get_city_info(self, info):
 
@@ -173,7 +174,7 @@ class Pos2CityHandler(BasicRequestHandler):
 
         for e in street_addr_dict['address_components']:
             if 'political' in e['types'] and 'locality' in e['types']:
-                return e['long_name']
+                return e['long_name'].lower()
 
         return ''
 
