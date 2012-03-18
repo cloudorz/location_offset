@@ -137,6 +137,66 @@ class AddressHandler(BasicRequestHandler):
         return street_addr
 
 
+class Pos2CityHandler(BasicRequestHandler):
+
+    def get(self, lat, lon):
+
+        lat, lon = float(lat), float(lon)
+        key = self.pixel2key(lat, lon)
+        res = self.rdb.get(key)
+
+        if not res:
+            http = tornado.httpclient.HTTPClient()
+            try:
+                data = http.fetch(
+                        "http://maps.google.com/maps/api/geocode/json?latlng=%f,%f&sensor=true&language=en"
+                        % (lat, lon))
+            except tornado.httpclient.HTTPError:
+                data = None
+
+            addr = ''
+            if data and data.body:
+                addr_info = json_decode(data.body)
+                if addr_info['status'] == 'OK':
+                    addr = self.extract_addr_info(addr_info)
+
+            res = addr
+
+            if res:
+                self.rdb.set(key, res)
+
+        return res
+
+    def get_city_info(self, info):
+
+        street_addr_dict = info['results'][0]
+
+        for e in street_addr_dict['address_components']:
+            if 'political' in e['types'] and 'locality' in e['types']:
+                return e['long_name']
+
+        return ''
+
+    def pixel2key(self, lat, lon):
+
+        lat_1000, lon_1000 = self.int05(lat), self.int05(lon)
+        return "city:%s" % hashlib.md5("%s%s" % (lat_1000, lon_1000)).hexdigest()
+
+    def int05(self, f):
+
+        partial = f*1000 - int(f*100)*10
+        if partial < 2.5:
+            plus = 0
+        elif partial >= 2.5 and partial < 7.5:
+            plus = 5
+        elif partial >= 7.5 and partial < 10:
+            plus = 10
+        else:
+            plus = 0
+
+        return int(f*100)*10 + plus
+
+
 class OffsetPos(object):
 
     def __init__(self, lat, lon, entry, zoom=18):
