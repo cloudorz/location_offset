@@ -14,9 +14,9 @@ from offset import OffsetHandler, AddressHandler, Pos2CityHandler
 define('port', default=8888, help="run on the given port", type=int)
 
 app = tornado.web.Application([
-    (r"^/e2m/(\d+\.\d+),(\d+\.\d+)$", OffsetHandler),
-    (r"^/m2addr/(\d+\.\d+),(\d+\.\d+)$", AddressHandler),
-    (r"^/city/(\d+\.\d+),(\d+\.\d+)$", Pos2CityHandler),
+    (r"^/e2m/([-+]\d+\.\d+),([-+]\d+\.\d+)$", OffsetHandler),
+    (r"^/m2addr/([-+]\d+\.\d+),([-+]\d+\.\d+)$", AddressHandler),
+    (r"^/city/([-+]\d+\.\d+),([-+]\d+\.\d+)$", Pos2CityHandler),
     ], 
     debug=False)
 
